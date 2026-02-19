@@ -6,6 +6,7 @@ import 'episode_cache_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:async'; // Für unawaited
+import 'services/cover_storage/cover_prefetch_service.dart';
 
 class EpisodeStateProvider extends ChangeNotifier {
   List<Episode> _episodes = [];
@@ -73,6 +74,8 @@ class EpisodeStateProvider extends ChangeNotifier {
       _loading = false;
       _error = null;
       notifyListeners();
+
+      unawaited(CoverWarmupService.instance.handleNewEpisodes(_episodes));
 
       // 2. Im Hintergrund: Frische Daten aus dem Netz laden und ggf. updaten
       unawaited(_backgroundUpdate(dataService));
@@ -144,6 +147,7 @@ class EpisodeStateProvider extends ChangeNotifier {
       if (!_listEqualsWithHash(_episodes, freshEpisodes)) {
         _episodes = freshEpisodes;
         notifyListeners();
+        unawaited(CoverWarmupService.instance.handleNewEpisodes(_episodes));
       }
       _backgroundUpdateFailed = false;
       notifyListeners();

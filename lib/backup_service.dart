@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import 'database_service.dart';
 import 'episode_data_service.dart';
 
@@ -37,32 +37,45 @@ class BackupService {
     }
   }
 
-  static Future<String> importDataFromClipboard(BuildContext context) async {
+  static Future<String> importDataFromFile(BuildContext context) async {
     try {
-      // Daten aus der Zwischenablage lesen
-      ClipboardData? clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
 
-      if (clipboardData == null || clipboardData.text == null || clipboardData.text!.isEmpty) {
-        return 'Keine Daten in der Zwischenablage gefunden';
+      if (result == null || result.files.isEmpty) {
+        return 'Keine Datei ausgewählt';
+      }
+
+      final file = result.files.single;
+      String? jsonString;
+
+      if (file.bytes != null) {
+        jsonString = utf8.decode(file.bytes!);
+      } else if (file.path != null) {
+        jsonString = await File(file.path!).readAsString();
+      }
+
+      if (jsonString == null || jsonString.isEmpty) {
+        return 'Datei konnte nicht gelesen werden';
       }
 
       try {
-        // Versuche, die Daten als JSON zu parsen
-        final Map<String, dynamic> importData = json.decode(clipboardData.text!);
+        final Map<String, dynamic> importData = json.decode(jsonString);
 
-        // Datenvalidierung
         if (!importData.containsKey('episode_state') || !importData.containsKey('episode_state_history')) {
-          return 'Ungültiges Backup-Format in der Zwischenablage';
+          return 'Ungültiges Backup-Format';
         }
 
-        // Bestätigungsdialog anzeigen
         bool? confirm = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
             title: Text('Backup importieren'),
             content: Text(
-                'Möchtest du wirklich dieses Backup importieren? '
-                    'Dies wird alle deine aktuellen Notizen, Bewertungen und Hörstatus überschreiben.'),
+              'Möchtest du wirklich dieses Backup importieren? '
+              'Dies überschreibt alle aktuellen Notizen, Bewertungen und Hörstatus.',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -80,14 +93,11 @@ class BackupService {
           return 'Import abgebrochen';
         }
 
-        // In SQLite speichern
         final db = DatabaseService();
         await db.importAllFromJson(importData);
 
-        // Nach dem Import: Spezial-Null-States bereinigen
         await db.removeNullSpezialStates();
 
-        // Nach dem Import: Orphaned States bereinigen
         final dataService = EpisodeDataService();
         final main = await dataService.fetchAllMainEpisodes();
         final kids = await dataService.fetchKidsEpisodes();
@@ -97,7 +107,7 @@ class BackupService {
 
         return 'Backup erfolgreich importiert';
       } catch (e) {
-        return 'Fehler beim Parsen der Daten: $e';
+        return 'Fehler beim Parsen der Datei: $e';
       }
     } catch (e) {
       return 'Fehler beim Importieren des Backups: $e';
@@ -127,10 +137,10 @@ class BackupService {
             ListTile(
               leading: Icon(Icons.download),
               title: Text('Backup importieren'),
-              subtitle: Text('Aus Zwischenablage importieren (kopiere vorher die JSON-Datei)'),
+              subtitle: Text('Gespeicherte JSON-Backup-Datei auswählen und importieren'),
               onTap: () async {
                 Navigator.pop(context);
-                final message = await importDataFromClipboard(context);
+                final message = await importDataFromFile(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(message)),
                 );

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'episode.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'episode_state_provider.dart';
+import 'widgets/persistent_cover_image.dart';
 
 class TimelinePage extends StatelessWidget {
   @override
@@ -43,16 +43,12 @@ class TimelinePage extends StatelessWidget {
   Widget _buildTimelineTile(BuildContext context, Episode ep) {
     return ListTile(
       leading: ep.coverUrl != null && ep.coverUrl!.isNotEmpty
-          ? ClipRRect(
+          ? PersistentCoverImage(
+              imageUrl: ep.coverUrl!,
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
               borderRadius: BorderRadius.circular(6),
-              child: CachedNetworkImage(
-                imageUrl: ep.coverUrl!,
-                width: 48,
-                height: 48,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => CircularProgressIndicator(),
-                errorWidget: (context, url, error) => Icon(Icons.broken_image),
-              ),
             )
           : Icon(Icons.album, size: 48),
       title: Text('${ep.nummer} / ${ep.titel}'),

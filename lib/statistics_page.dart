@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'main.dart';
 import 'episode.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'widgets/persistent_cover_image.dart';
 import 'package:provider/provider.dart';
 import 'episode_state_provider.dart';
 import 'episode_detail_page.dart';
@@ -226,15 +226,12 @@ class _StatisticsPageState extends State<StatisticsPage> {
                             EpisodeDetailPage(episode: ep),
                       ));
                     },
-                    child: CachedNetworkImage(
+                    child: PersistentCoverImage(
                       imageUrl: ep.coverUrl!,
                       width: 40,
                       height: 40,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) =>
-                          CircularProgressIndicator(),
-                      errorWidget: (context, url, error) =>
-                          Icon(Icons.broken_image),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   )
                       : Icon(Icons.album),

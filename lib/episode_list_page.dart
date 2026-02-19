@@ -6,7 +6,7 @@ import 'backup_service.dart';
 import 'statistics_page.dart';
 import 'settings_page.dart';
 import 'main.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'widgets/persistent_cover_image.dart';
 import 'episode_state_provider.dart';
 import 'database_service.dart';
 import 'random_episode_page.dart';
@@ -718,16 +718,12 @@ class _EpisodeListPageState extends State<EpisodeListPage> with SingleTickerProv
   Widget _buildTile(Episode ep) {
     return ListTile(
       leading: ep.coverUrl != null && ep.coverUrl!.isNotEmpty
-          ? ClipRRect(
+          ? PersistentCoverImage(
+              imageUrl: ep.coverUrl!,
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
               borderRadius: BorderRadius.circular(6),
-              child: CachedNetworkImage(
-                imageUrl: ep.coverUrl!,
-                width: 48,
-                height: 48,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => CircularProgressIndicator(),
-                errorWidget: (context, url, error) => Icon(Icons.broken_image),
-              ),
             )
           : Icon(Icons.album, size: 48),
       title: Text('${ep.nummer} / ${ep.titel}'),

@@ -4,9 +4,9 @@ import 'episode.dart';
 import 'database_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'episode_state_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'widgets/persistent_cover_image.dart';
 
 class EpisodeDetailPage extends StatefulWidget {
   final Episode episode;
@@ -202,15 +202,11 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
                           _showLargeCover = true;
                         });
                       },
-                      child: ClipRRect(
+                      child: PersistentCoverImage(
+                        imageUrl: ep.coverUrl!,
+                        height: 200,
+                        fit: BoxFit.cover,
                         borderRadius: BorderRadius.circular(12),
-                        child: CachedNetworkImage(
-                          imageUrl: ep.coverUrl!,
-                          height: 200,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => CircularProgressIndicator(),
-                          errorWidget: (context, url, error) => Icon(Icons.broken_image),
-                        ),
                       ),
                     ),
                   ),
@@ -442,10 +438,10 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
                   child: Stack(
                     children: [
                       Center(
-                        child: CachedNetworkImage(
+                        child: PersistentCoverImage(
                           imageUrl: ep.coverUrl!,
                           fit: BoxFit.contain,
-                          errorWidget: (context, url, error) => Icon(Icons.broken_image, size: 120, color: Colors.white),
+                          errorIconColor: Colors.white,
                         ),
                       ),
                       Positioned(

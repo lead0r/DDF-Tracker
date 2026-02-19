@@ -46,6 +46,8 @@ void main() async {
 }
 
 class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
   static _MyAppState? of(BuildContext context) =>
       context.findAncestorStateOfType<_MyAppState>();
 
@@ -110,14 +112,14 @@ class _MyAppState extends State<MyApp> {
         elevation: 0,
         centerTitle: true,
       ),
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         labelColor: Colors.white,
         unselectedLabelColor: Colors.grey,
-        indicator: UnderlineTabIndicator(
+        indicator: const UnderlineTabIndicator(
           borderSide: BorderSide(color: Colors.white, width: 2),
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -173,14 +175,14 @@ class _MyAppState extends State<MyApp> {
         elevation: 0,
         centerTitle: true,
       ),
-      tabBarTheme: TabBarTheme(
-        labelColor: Color(0xFF64B5F6),
+      tabBarTheme: TabBarThemeData(
+        labelColor: const Color(0xFF64B5F6),
         unselectedLabelColor: Colors.grey,
-        indicator: UnderlineTabIndicator(
+        indicator: const UnderlineTabIndicator(
           borderSide: BorderSide(color: Color(0xFF64B5F6), width: 2),
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
