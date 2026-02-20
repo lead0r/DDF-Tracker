@@ -21,7 +21,7 @@ For anyone who can't quite remember whether they've heard certain episodes of Di
 
 Based on the idea and UI of [ selmaohneh/DdfGuide ](https://github.com/selmaohneh/DdfGuide)
 
-The app has been, however, completely rewritten in Flutter with the help of cursor.com/chatGPT, and new features have been added—such as episode tracking and a rating system. The main idea (unlike DdfGuide) is that you can mark and rate episodes you've listened to and make notes about them. 
+The app has been, however, completely rewritten in Flutter with the help of cursor.com/chatGPT and openClaw/chatGPT, and new features have been added—such as episode tracking and a rating system. The main idea (unlike DdfGuide) is that you can mark and rate episodes you've listened to and make notes about them. 
 
 Metadata about the episodes is provided by the great project https://dreimetadaten.de/ /  [ YourMJK/dreimetadaten ](https://github.com/YourMJK/dreimetadaten)
 
