@@ -157,6 +157,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> with SingleTickerProv
         // Typ
         if (_selectedType.isNotEmpty) {
           matches = matches && (
+            (_selectedType == 'Regulaer' && (ep.serieTyp == 'Serie' || ep.serieTyp == null || ep.serieTyp!.isEmpty)) ||
             (_selectedType == 'Spezial' && ep.serieTyp == 'Spezial') ||
             (_selectedType == 'Kurzgeschichte' && ep.serieTyp == 'Kurzgeschichte')
           );
@@ -260,6 +261,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> with SingleTickerProv
     final listenedValues = ['', 'true', 'false'];
     final typeItems = [
       DropdownMenuItem(value: '', child: Text('Alle Folgen')),
+      DropdownMenuItem(value: 'Regulaer', child: Text('Nur reguläre Folgen')),
       DropdownMenuItem(value: 'Spezial', child: Text('Nur Spezialfolgen')),
       DropdownMenuItem(value: 'Kurzgeschichte', child: Text('Nur Kurzgeschichten')),
     ];
@@ -278,7 +280,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> with SingleTickerProv
     if (!sortedYears.contains(yearValue)) yearValue = '';
     if (!ratingList.contains(ratingValue)) ratingValue = -1;
     if (!listenedValues.contains(listenedValue)) listenedValue = '';
-    if (!['', 'Spezial', 'Kurzgeschichte'].contains(typeValue)) typeValue = '';
+    if (!['', 'Regulaer', 'Spezial', 'Kurzgeschichte'].contains(typeValue)) typeValue = '';
 
     final authorItems = sortedAuthors.isEmpty
       ? [DropdownMenuItem(value: '', child: Text('Keine Autoren'))]
@@ -732,7 +734,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> with SingleTickerProv
               borderRadius: BorderRadius.circular(6),
             )
           : Icon(Icons.album, size: 48),
-      title: Text('${ep.nummer} / ${ep.titel}'),
+      title: Text(ep.nummer != null && ep.nummer > 0 ? '${ep.nummer} / ${ep.titel}' : ep.titel),
       subtitle: Row(
         children: [
           ...List.generate(5, (i) {
