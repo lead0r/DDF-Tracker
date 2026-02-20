@@ -1,5 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'services/cover_storage/cover_prefetch_service.dart';
+import 'services/cover_storage/cover_image_loader.dart';
 
 enum StreamingProvider {
   spotify,
@@ -35,11 +39,24 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   StreamingProvider? _selectedProvider;
+  int? _coverCount;
+  int? _coverBytes;
+  bool _loadingCoverStats = false;
+  bool _initialStatsLoaded = false;
+  Timer? _statsTimer;
 
   @override
   void initState() {
     super.initState();
     _loadProvider();
+    _loadCoverStats();
+    _statsTimer = Timer.periodic(const Duration(seconds: 10), (_) => _loadCoverStats());
+  }
+
+  @override
+  void dispose() {
+    _statsTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadProvider() async {
@@ -59,6 +76,67 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _selectedProvider = provider;
     });
+  }
+
+  Future<void> _loadCoverStats() async {
+    if (_loadingCoverStats) return;
+    if (!mounted) return;
+    final shouldShowLoading = !_initialStatsLoaded;
+    if (shouldShowLoading) {
+      setState(() {
+        _loadingCoverStats = true;
+      });
+    }
+    final count = await getCachedCoverCount();
+    final bytes = await getCoverCacheSizeBytes();
+    if (!mounted) return;
+    setState(() {
+      _coverCount = count;
+      _coverBytes = bytes;
+      _loadingCoverStats = false;
+      _initialStatsLoaded = true;
+    });
+  }
+
+  Future<void> _handleCoverReload() async {
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Cover erneut laden?'),
+        content: Text(
+          'Der lokale Cover-Cache wird gelöscht und alle Cover werden erneut geladen. Fortfahren?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('Ja, neu laden'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await CoverWarmupService.instance.restartWithFullDownload(showInitializingState: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cover-Download neu gestartet')),
+      );
+      _loadCoverStats();
+    }
+  }
+
+  String _formatBytes(int? bytes) {
+    if (bytes == null || bytes <= 0) return '0 MB';
+    final mb = bytes / (1024 * 1024);
+    if (mb >= 1) {
+      return '${mb.toStringAsFixed(1)} MB';
+    }
+    final kb = bytes / 1024;
+    return '${kb.toStringAsFixed(0)} KB';
   }
 
   @override
@@ -84,6 +162,22 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                 ),
               )),
+          Divider(),
+          ListTile(
+            leading: Icon(Icons.image_outlined),
+            title: Text('Cover-Cache'),
+            subtitle: Text(
+              _loadingCoverStats
+                  ? 'Aktualisiere Status...'
+                  : '${_coverCount ?? 0} Cover · ${_formatBytes(_coverBytes)}',
+            ),
+          ),
+          ListTile(
+            leading: Icon(Icons.cloud_download_outlined),
+            title: Text('Cover erneut laden'),
+            subtitle: Text('Cache leeren und alle Cover danach erneut herunterladen.'),
+            onTap: _handleCoverReload,
+          ),
         ],
       ),
     );

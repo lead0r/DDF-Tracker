@@ -1,11 +1,22 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'dart:io';
+
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
+
 import 'database_service.dart';
 import 'episode_data_service.dart';
+import 'episode_state_provider.dart';
+
+class BackupImportResult {
+  final bool success;
+  final String message;
+
+  const BackupImportResult({required this.success, required this.message});
+}
 
 class BackupService {
   static Future<Map<String, dynamic>> getExportData() async {
@@ -28,7 +39,7 @@ class BackupService {
       // Datei teilen
       await Share.shareXFiles(
         [XFile(backupFilePath)],
-        subject: 'Drei ??? Guide Backup',
+        subject: '??? Tracker Backup',
       );
 
       return 'Backup erfolgreich erstellt und geteilt';
@@ -37,15 +48,16 @@ class BackupService {
     }
   }
 
-  static Future<String> importDataFromFile(BuildContext context) async {
+  static Future<BackupImportResult> importDataFromFile(BuildContext context) async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
+        withData: true,
       );
 
       if (result == null || result.files.isEmpty) {
-        return 'Keine Datei ausgewählt';
+        return const BackupImportResult(success: false, message: 'Keine Datei ausgewählt');
       }
 
       final file = result.files.single;
@@ -55,17 +67,21 @@ class BackupService {
         jsonString = utf8.decode(file.bytes!);
       } else if (file.path != null) {
         jsonString = await File(file.path!).readAsString();
+      } else if (file.readStream != null) {
+        final buffer = await file.readStream!
+            .fold<List<int>>([], (previous, element) => previous..addAll(element));
+        jsonString = utf8.decode(buffer);
       }
 
       if (jsonString == null || jsonString.isEmpty) {
-        return 'Datei konnte nicht gelesen werden';
+        return const BackupImportResult(success: false, message: 'Datei konnte nicht gelesen werden');
       }
 
       try {
         final Map<String, dynamic> importData = json.decode(jsonString);
 
         if (!importData.containsKey('episode_state') || !importData.containsKey('episode_state_history')) {
-          return 'Ungültiges Backup-Format';
+          return const BackupImportResult(success: false, message: 'Ungültiges Backup-Format');
         }
 
         bool? confirm = await showDialog<bool>(
@@ -90,7 +106,7 @@ class BackupService {
         );
 
         if (confirm != true) {
-          return 'Import abgebrochen';
+          return const BackupImportResult(success: false, message: 'Import abgebrochen');
         }
 
         final db = DatabaseService();
@@ -105,19 +121,23 @@ class BackupService {
         final allEpisodeIds = [...main, ...kids, ...dr3i].map((e) => e.id).toList();
         await db.removeOrphanedStates(allEpisodeIds);
 
-        return 'Backup erfolgreich importiert';
+        final provider = context.read<EpisodeStateProvider>();
+        await provider.loadEpisodes();
+
+        return const BackupImportResult(success: true, message: 'Backup erfolgreich importiert');
       } catch (e) {
-        return 'Fehler beim Parsen der Datei: $e';
+        return BackupImportResult(success: false, message: 'Fehler beim Parsen der Datei: $e');
       }
     } catch (e) {
-      return 'Fehler beim Importieren des Backups: $e';
+      return BackupImportResult(success: false, message: 'Fehler beim Importieren des Backups: $e');
     }
   }
 
   static Future<void> showBackupDialog(BuildContext context) async {
+    final rootContext = context;
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: rootContext,
+      builder: (dialogContext) => AlertDialog(
         title: Text('Backup-Optionen'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -127,9 +147,9 @@ class BackupService {
               title: Text('Backup exportieren'),
               subtitle: Text('Notizen, Bewertungen und Hörstatus exportieren'),
               onTap: () async {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 final message = await createAndShareBackupFile();
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(rootContext).showSnackBar(
                   SnackBar(content: Text(message)),
                 );
               },
@@ -139,10 +159,10 @@ class BackupService {
               title: Text('Backup importieren'),
               subtitle: Text('Gespeicherte JSON-Backup-Datei auswählen und importieren'),
               onTap: () async {
-                Navigator.pop(context);
-                final message = await importDataFromFile(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(message)),
+                Navigator.pop(dialogContext);
+                final result = await importDataFromFile(rootContext);
+                ScaffoldMessenger.of(rootContext).showSnackBar(
+                  SnackBar(content: Text(result.message)),
                 );
               },
             ),
@@ -150,7 +170,7 @@ class BackupService {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('Schließen'),
           ),
         ],

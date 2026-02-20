@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
+
 import 'episode_list_page.dart';
 import 'package:background_fetch/background_fetch.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -7,6 +10,8 @@ import 'background_service.dart';
 import 'package:provider/provider.dart';
 import 'episode_state_provider.dart';
 import 'database_service.dart';
+import 'services/cover_storage/cover_prefetch_service.dart';
+import 'services/cover_storage/cover_image_loader.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -85,11 +90,11 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Die drei ??? Guide',
+      title: '??? Tracker',
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
       themeMode: _themeMode,
-      home: EpisodeListPage(),
+      home: const SplashGate(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -216,6 +221,154 @@ class _MyAppState extends State<MyApp> {
         selectedColor: Color(0xFF64B5F6),
         labelStyle: TextStyle(color: Color(0xFF64B5F6)),
         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      ),
+    );
+  }
+}
+class SplashGate extends StatefulWidget {
+  const SplashGate({super.key});
+
+  @override
+  State<SplashGate> createState() => _SplashGateState();
+}
+
+class _SplashGateState extends State<SplashGate> {
+  bool _coverPromptCompleted = false;
+  bool _coverPromptInFlight = false;
+  bool _holdForOnboarding = false;
+
+  static const _approxCoverSizeLabel = 'ca. 1,3 GB';
+  static const _onboardingAckKey = 'cover_onboarding_ack';
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<EpisodeStateProvider>(
+      builder: (context, provider, _) {
+        final ready = !provider.loading && provider.episodes.isNotEmpty;
+        if (ready) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _maybePromptCoverPrefetch(context, provider);
+          });
+        }
+        final showList = ready && !_holdForOnboarding;
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          child: showList
+              ? const EpisodeListPage(key: ValueKey('episode-list'))
+              : const _SplashScreen(key: ValueKey('splash-screen')),
+        );
+      },
+    );
+  }
+
+  void _maybePromptCoverPrefetch(BuildContext context, EpisodeStateProvider provider) {
+    if (_coverPromptCompleted || _coverPromptInFlight) return;
+    if (provider.loading || provider.episodes.isEmpty) return;
+
+    _coverPromptInFlight = true;
+    setState(() {
+      _holdForOnboarding = true;
+    });
+
+    Future.microtask(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final alreadyAcked = prefs.getBool(_onboardingAckKey) ?? false;
+      if (alreadyAcked) {
+        if (mounted) {
+          setState(() {
+            _coverPromptCompleted = true;
+            _coverPromptInFlight = false;
+            _holdForOnboarding = false;
+          });
+        }
+        return;
+      }
+
+      final accepted = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('Coverbilder laden?'),
+          content: Text(
+            'Damit alle Cover offline verfügbar sind, werden '
+            'etwa $_approxCoverSizeLabel Daten im Hintergrund geladen. Jetzt starten?'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text('App schließen'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text('Ja, bitte laden'),
+            ),
+          ],
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (accepted == true) {
+        await prefs.setBool(_onboardingAckKey, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cover-Download gestartet')),
+        );
+        unawaited(CoverWarmupService.instance.startWarmup(
+          userInitiated: true,
+          persistOptIn: true,
+          episodes: provider.episodes,
+          showInitializingState: true,
+        ));
+      } else {
+        if (mounted) {
+          setState(() {
+            _coverPromptInFlight = false;
+            _holdForOnboarding = false;
+          });
+        }
+        SystemNavigator.pop();
+        return;
+      }
+
+      if (mounted) {
+        setState(() {
+          _coverPromptCompleted = true;
+          _coverPromptInFlight = false;
+          _holdForOnboarding = false;
+        });
+      }
+    });
+  }
+}
+
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final background = isDark ? const Color(0xFF101010) : Colors.white;
+    return Scaffold(
+      backgroundColor: background,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.album, size: 72, color: Colors.redAccent),
+            SizedBox(height: 16),
+            Text(
+              '??? Tracker',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+            ),
+            SizedBox(height: 16),
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -94,8 +96,12 @@ class CoverWarmupService {
 
   static const _prefetchOptInKey = 'cover_prefetch_opt_in';
   static const _lastPromptKey = 'cover_prefetch_last_prompt';
+  static const _lastCompletedKey = 'cover_prefetch_last_completed';
+  static const _lastCompletedHashKey = 'cover_prefetch_last_hash';
   static const _snoozeDuration = Duration(hours: 12);
   static const _defaultEstimatedCoverBytes = 220 * 1024; // ~215 KB
+
+  int get defaultCoverBytesEstimate => _defaultEstimatedCoverBytes;
 
   final ValueNotifier<CoverWarmupProgress> progressNotifier =
       ValueNotifier(CoverWarmupProgress.idle());
@@ -210,10 +216,17 @@ class CoverWarmupService {
     if (_isRunning) return;
     final plan = await preparePlan(forceRescan: true);
     if (plan.missingUrls.isEmpty) return;
+
+    final planHash = _planSignature(plan);
+    if (await _wasPlanCompleted(planHash)) {
+      return;
+    }
+
     await startWarmup(
       plan: plan,
       userInitiated: false,
       persistOptIn: false,
+      planHashOverride: planHash,
     );
   }
 
@@ -222,21 +235,43 @@ class CoverWarmupService {
     bool userInitiated = false,
     bool persistOptIn = false,
     List<Episode>? episodes,
+    String? planHashOverride,
+    bool showInitializingState = false,
   }) async {
     if (_isRunning) return;
+    if (showInitializingState) {
+      progressNotifier.value = const CoverWarmupProgress(
+        isRunning: true,
+        totalCovers: 0,
+        completedCovers: 0,
+        estimatedBytes: 0,
+        downloadedBytes: 0,
+        showCompletion: false,
+        userInitiated: true,
+      );
+    }
     final effectivePlan = plan ??
         await preparePlan(forceRescan: true, episodes: episodes);
     if (effectivePlan.missingUrls.isEmpty) {
       _cachedPlan = null;
+      if (showInitializingState) {
+        progressNotifier.value = CoverWarmupProgress.idle();
+      }
       return;
     }
 
     _isRunning = true;
     _completionHideTimer?.cancel();
 
+    if (persistOptIn) {
+      await markOptedIn();
+    }
+
     final estimatedBytes = effectivePlan.estimatedBytesTotal > 0
         ? effectivePlan.estimatedBytesTotal
         : effectivePlan.missingCount * _defaultEstimatedCoverBytes;
+
+    final planHash = planHashOverride ?? _planSignature(effectivePlan);
 
     progressNotifier.value = CoverWarmupProgress(
       isRunning: true,
@@ -277,20 +312,54 @@ class CoverWarmupService {
       progressNotifier.value = CoverWarmupProgress.idle();
     });
 
-    if (persistOptIn) {
-      await markOptedIn();
+    if (completedCovers >= effectivePlan.missingCount) {
+      await _markCompleted(planHash);
     }
   }
 
-  Future<void> forceFullReload() async {
+  Future<void> restartWithFullDownload({bool showInitializingState = false}) async {
     if (_isRunning) return;
     await clearPersistentCoverCache();
     _cachedPlan = null;
+    final plan = await preparePlan(forceRescan: true);
+    final planHash = _planSignature(plan);
     await startWarmup(
       userInitiated: true,
       persistOptIn: true,
-      plan: await preparePlan(forceRescan: true),
+      plan: plan,
+      planHashOverride: planHash,
+      showInitializingState: showInitializingState,
     );
+  }
+
+  Future<void> forceFullReload() async {
+    await restartWithFullDownload();
+  }
+
+  Future<void> _markCompleted(String planHash) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lastCompletedKey, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setString(_lastCompletedHashKey, planHash);
+  }
+
+  Future<bool> _wasPlanCompleted(String planHash) async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastHash = prefs.getString(_lastCompletedHashKey);
+    return lastHash != null && lastHash == planHash;
+  }
+
+  String _planSignature(CoverDownloadPlan plan) {
+    final buffer = StringBuffer()
+      ..write(plan.totalCovers)
+      ..write(':')
+      ..write(plan.missingCount);
+    final urls = [...plan.missingUrls]..sort();
+    for (final url in urls) {
+      buffer
+        ..write(':')
+        ..write(url);
+    }
+    return sha1.convert(utf8.encode(buffer.toString())).toString();
   }
 
   Future<List<Episode>> _ensureEpisodes({List<Episode>? episodes}) async {

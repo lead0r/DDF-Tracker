@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -27,21 +29,55 @@ String _fileNameForUrl(String url) {
   return '$hash.jpg';
 }
 
+Future<bool> _isValidImage(Uint8List bytes) async {
+  try {
+    final codec = await ui.instantiateImageCodec(bytes);
+    codec.dispose();
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<Uint8List?> _fetchCoverBytes(String url, {int retries = 2}) async {
+  for (var attempt = 0; attempt <= retries; attempt++) {
+    try {
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        if (await _isValidImage(bytes)) {
+          return bytes;
+        }
+      }
+    } catch (err) {
+      debugPrint('Cover download attempt failed for $url: $err');
+    }
+    if (attempt < retries) {
+      await Future.delayed(const Duration(milliseconds: 400));
+    }
+  }
+  return null;
+}
+
 Future<ImageProvider?> loadPersistentCover(String url) async {
   try {
     final directory = await _getCoverDirectory();
     final file = File('${directory.path}/${_fileNameForUrl(url)}');
 
     if (await file.exists()) {
-      return FileImage(file);
+      final bytes = await file.readAsBytes();
+      if (await _isValidImage(bytes)) {
+        return FileImage(file);
+      } else {
+        await file.delete();
+      }
     }
 
-    final response = await http
-        .get(Uri.parse(url))
-        .timeout(const Duration(seconds: 10));
-
-    if (response.statusCode == 200) {
-      await file.writeAsBytes(response.bodyBytes, flush: true);
+    final bytes = await _fetchCoverBytes(url);
+    if (bytes != null) {
+      await file.writeAsBytes(bytes, flush: true);
       return FileImage(file);
     }
   } catch (err, stack) {
@@ -77,16 +113,18 @@ Future<int> downloadCoverToCache(String url) async {
     final directory = await _getCoverDirectory();
     final file = File('${directory.path}/${_fileNameForUrl(url)}');
     if (await file.exists()) {
-      return 0;
+      final bytes = await file.readAsBytes();
+      if (await _isValidImage(bytes)) {
+        return 0;
+      } else {
+        await file.delete();
+      }
     }
 
-    final response = await http
-        .get(Uri.parse(url))
-        .timeout(const Duration(seconds: 10));
-
-    if (response.statusCode == 200) {
-      await file.writeAsBytes(response.bodyBytes, flush: true);
-      return response.bodyBytes.length;
+    final bytes = await _fetchCoverBytes(url);
+    if (bytes != null) {
+      await file.writeAsBytes(bytes, flush: true);
+      return bytes.length;
     }
   } catch (err, stack) {
     debugPrint('Persistent cover warmup failed for $url: $err');

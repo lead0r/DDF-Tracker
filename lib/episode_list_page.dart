@@ -7,11 +7,15 @@ import 'statistics_page.dart';
 import 'settings_page.dart';
 import 'main.dart';
 import 'widgets/persistent_cover_image.dart';
+import 'widgets/cover_warmup_banner.dart';
 import 'episode_state_provider.dart';
 import 'database_service.dart';
 import 'random_episode_page.dart';
+import 'services/cover_storage/cover_prefetch_service.dart';
 
 class EpisodeListPage extends StatefulWidget {
+  const EpisodeListPage({super.key});
+
   @override
   _EpisodeListPageState createState() => _EpisodeListPageState();
 }
@@ -488,6 +492,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> with SingleTickerProv
     );
   }
 
+  
   @override
   Widget build(BuildContext context) {
     final appState = MyApp.of(context);
@@ -655,6 +660,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> with SingleTickerProv
               ),
             ),
           ),
+          const CoverWarmupBanner(),
           // Das Fehler-Banner nur anzeigen, wenn die Snackbar nicht gezeigt wird
           if (error != null && !_snackbarShown)
             Padding(
