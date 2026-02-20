@@ -29,9 +29,9 @@ Runs on Android – not yet available on iOS.
 
 ## ⬇️ Download
 
-**Latest alpha release:** `v0.2.0-alpha`
+**Latest alpha release:** `v0.3.0-alpha`
 
-👉 [Download APK](https://github.com/lead0r/DDF-Guide-Rate/releases/tag/v0.2.0-alpha)
+👉 [Download APK](https://github.com/lead0r/DDF-Guide-Rate/releases/tag/v0.3.0-alpha)
 
 > ⚠️ This is an **alpha version**.  
 > Features may be incomplete and bugs may occur.
