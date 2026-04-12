@@ -734,7 +734,7 @@ class _EpisodeListPageState extends State<EpisodeListPage> with SingleTickerProv
               borderRadius: BorderRadius.circular(6),
             )
           : Icon(Icons.album, size: 48),
-      title: Text(ep.nummer != null && ep.nummer > 0 ? '${ep.nummer} / ${ep.titel}' : ep.titel),
+      title: Text(ep.formattedTitle),
       subtitle: Row(
         children: [
           ...List.generate(5, (i) {

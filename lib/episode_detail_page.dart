@@ -95,7 +95,8 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
   }
 
   void _share() {
-    final text = 'Meine Bewertung für ${widget.episode.titel} (#${widget.episode.nummer}): $_rating Sterne\n${_noteController.text}';
+    final numberPart = widget.episode.nummer > 0 ? ' (#${widget.episode.nummer})' : '';
+    final text = 'Meine Bewertung für ${widget.episode.titel}$numberPart: $_rating Sterne\n${_noteController.text}';
     Share.share(text);
   }
 
@@ -173,7 +174,7 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${ep.nummer} / ${ep.titel}'),
+        title: Text(ep.formattedTitle),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {

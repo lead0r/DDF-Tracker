@@ -43,7 +43,8 @@ class NotificationService {
             .toList();
 
         for (var episode in newEpisodes) {
-          print('Neue Folge verfügbar: ${episode.titel} (${episode.nummer})');
+          final numberPart = episode.nummer > 0 ? ' (${episode.nummer})' : '';
+          print('Neue Folge verfügbar: ${episode.titel}$numberPart');
         }
       }
     } catch (e) {

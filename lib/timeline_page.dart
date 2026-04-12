@@ -51,7 +51,7 @@ class TimelinePage extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             )
           : Icon(Icons.album, size: 48),
-      title: Text('${ep.nummer} / ${ep.titel}'),
+      title: Text(ep.formattedTitle),
       subtitle: Row(
         children: [
           if (ep.veroeffentlichungsdatum != null)

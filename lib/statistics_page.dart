@@ -242,7 +242,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       ));
                     },
                     child: Text(
-                      '${ep.nummer} / ${ep.titel}',
+                      ep.formattedTitle,
                       style: TextStyle(
                         decoration: TextDecoration.underline,
                       ),

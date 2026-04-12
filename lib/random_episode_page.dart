@@ -135,8 +135,7 @@ class _RandomEpisodePageState extends State<RandomEpisodePage>
   }
 
   String _episodeTitle(Episode e) {
-    if (e.nummer <= 0) return e.titel;
-    return '${e.nummer} / ${e.titel}';
+    return e.formattedTitle;
   }
 
   @override

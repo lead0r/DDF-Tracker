@@ -42,6 +42,9 @@ class Episode {
     return jsonLinks.map((key, value) => MapEntry(key.toString(), value.toString()));
   }
 
+  String get formattedTitle => nummer > 0 ? '$nummer / $titel' : titel;
+
+
   factory Episode.fromSerieJson(Map<String, dynamic> json) {
     String id;
     final nummer = json['nummer'];
