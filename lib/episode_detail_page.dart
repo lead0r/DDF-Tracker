@@ -172,13 +172,25 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
     final episodeProvider = Provider.of<EpisodeStateProvider>(context);
     final ep = episodeProvider.episodes.firstWhere((e) => e.id == widget.episode.id, orElse: () => widget.episode);
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        if (_showLargeCover) {
+          setState(() => _showLargeCover = false);
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(ep.formattedTitle),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pop(context, true);
+            if (_showLargeCover) {
+              setState(() => _showLargeCover = false);
+            } else {
+              Navigator.pop(context, true);
+            }
           },
         ),
         actions: [
