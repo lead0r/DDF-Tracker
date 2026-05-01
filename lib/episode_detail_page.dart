@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:vector_math/vector_math_64.dart' show Matrix4;
 import 'package:provider/provider.dart';
 import 'episode.dart';
 import 'database_service.dart';
@@ -28,6 +29,8 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
   double _coverOverlayScale = 1.0;
   double _coverDragDistance = 0.0;
   Timer? _coverOverlayTimer;
+  final TransformationController _coverTransformController = TransformationController();
+  bool _coverInteractionActive = false;
 
   @override
   void initState() {
@@ -41,6 +44,7 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
   @override
   void dispose() {
     _coverOverlayTimer?.cancel();
+    _coverTransformController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -115,6 +119,8 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
   void _openLargeCover() {
     if (_showLargeCover) return;
     _coverOverlayTimer?.cancel();
+    _coverTransformController.value = Matrix4.identity();
+    _coverInteractionActive = false;
     setState(() {
       _showLargeCover = true;
       _coverOverlayOpacity = 0.0;
@@ -129,16 +135,20 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
     });
   }
 
+  bool get _isCoverZoomed => _coverTransformController.value.getMaxScaleOnAxis() > 1.02;
+
   void _closeLargeCover({bool immediate = false}) {
     if (!_showLargeCover) return;
     _coverOverlayTimer?.cancel();
     _coverDragDistance = 0.0;
+    _coverInteractionActive = false;
     if (immediate) {
       setState(() {
         _showLargeCover = false;
         _coverOverlayOpacity = 0.0;
         _coverOverlayScale = 1.0;
       });
+      _coverTransformController.value = Matrix4.identity();
       return;
     }
     setState(() {
@@ -151,14 +161,20 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
         _showLargeCover = false;
         _coverOverlayScale = 1.0;
       });
+      _coverTransformController.value = Matrix4.identity();
     });
   }
 
   void _handleCoverDragUpdate(double delta) {
+    if (_coverInteractionActive || _isCoverZoomed) return;
     _coverDragDistance += delta;
   }
 
   void _handleCoverDragEnd(double velocity) {
+    if (_coverInteractionActive || _isCoverZoomed) {
+      _coverDragDistance = 0.0;
+      return;
+    }
     if (_coverDragDistance.abs() > 60 || velocity.abs() > 300) {
       _closeLargeCover();
     }
@@ -521,10 +537,20 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
                             duration: const Duration(milliseconds: 180),
                             curve: Curves.easeOutBack,
                             scale: _coverOverlayScale,
-                            child: PersistentCoverImage(
-                              imageUrl: ep.coverUrl!,
-                              fit: BoxFit.contain,
-                              errorIconColor: Colors.white,
+                            child: InteractiveViewer(
+                              transformationController: _coverTransformController,
+                              minScale: 1.0,
+                              maxScale: 3.0,
+                              panEnabled: false,
+                              onInteractionStart: (_) => _coverInteractionActive = true,
+                              onInteractionEnd: (_) {
+                                _coverInteractionActive = false;
+                              },
+                              child: PersistentCoverImage(
+                                imageUrl: ep.coverUrl!,
+                                fit: BoxFit.contain,
+                                errorIconColor: Colors.white,
+                              ),
                             ),
                           ),
                         ),
