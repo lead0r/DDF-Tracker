@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'episode.dart';
@@ -23,6 +24,10 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
   bool _saving = false;
   bool _editingNote = false;
   bool _showLargeCover = false;
+  double _coverOverlayOpacity = 0.0;
+  double _coverOverlayScale = 1.0;
+  double _coverDragDistance = 0.0;
+  Timer? _coverOverlayTimer;
 
   @override
   void initState() {
@@ -31,6 +36,13 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
     _rating = widget.episode.rating;
     _listened = widget.episode.listened;
     _editingNote = (widget.episode.note == null || widget.episode.note!.isEmpty);
+  }
+
+  @override
+  void dispose() {
+    _coverOverlayTimer?.cancel();
+    _noteController.dispose();
+    super.dispose();
   }
 
   Future<void> _saveState() async {
@@ -98,6 +110,59 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
     final numberPart = widget.episode.nummer > 0 ? ' (#${widget.episode.nummer})' : '';
     final text = 'Meine Bewertung für ${widget.episode.titel}$numberPart: $_rating Sterne\n${_noteController.text}';
     Share.share(text);
+  }
+
+  void _openLargeCover() {
+    if (_showLargeCover) return;
+    _coverOverlayTimer?.cancel();
+    setState(() {
+      _showLargeCover = true;
+      _coverOverlayOpacity = 0.0;
+      _coverOverlayScale = 0.94;
+    });
+    _coverOverlayTimer = Timer(const Duration(milliseconds: 16), () {
+      if (!mounted) return;
+      setState(() {
+        _coverOverlayOpacity = 1.0;
+        _coverOverlayScale = 1.0;
+      });
+    });
+  }
+
+  void _closeLargeCover({bool immediate = false}) {
+    if (!_showLargeCover) return;
+    _coverOverlayTimer?.cancel();
+    _coverDragDistance = 0.0;
+    if (immediate) {
+      setState(() {
+        _showLargeCover = false;
+        _coverOverlayOpacity = 0.0;
+        _coverOverlayScale = 1.0;
+      });
+      return;
+    }
+    setState(() {
+      _coverOverlayOpacity = 0.0;
+      _coverOverlayScale = 0.94;
+    });
+    _coverOverlayTimer = Timer(const Duration(milliseconds: 180), () {
+      if (!mounted) return;
+      setState(() {
+        _showLargeCover = false;
+        _coverOverlayScale = 1.0;
+      });
+    });
+  }
+
+  void _handleCoverDragUpdate(double delta) {
+    _coverDragDistance += delta;
+  }
+
+  void _handleCoverDragEnd(double velocity) {
+    if (_coverDragDistance.abs() > 60 || velocity.abs() > 300) {
+      _closeLargeCover();
+    }
+    _coverDragDistance = 0.0;
   }
 
   String _providerToLinkKey(String provider) {
@@ -175,34 +240,34 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
     return WillPopScope(
       onWillPop: () async {
         if (_showLargeCover) {
-          setState(() => _showLargeCover = false);
+          _closeLargeCover();
           return false;
         }
         return true;
       },
       child: Scaffold(
-      appBar: AppBar(
-        title: Text(ep.formattedTitle),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_showLargeCover) {
-              setState(() => _showLargeCover = false);
-            } else {
-              Navigator.pop(context, true);
-            }
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.share),
-            onPressed: _share,
+        appBar: AppBar(
+          title: Text(ep.formattedTitle),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              if (_showLargeCover) {
+                _closeLargeCover();
+              } else {
+                Navigator.pop(context, true);
+              }
+            },
           ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
+          actions: [
+            IconButton(
+              icon: Icon(Icons.share),
+              onPressed: _share,
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            SingleChildScrollView(
             padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,11 +275,7 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
                 if (ep.coverUrl != null && ep.coverUrl!.isNotEmpty)
                   Center(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _showLargeCover = true;
-                        });
-                      },
+                      onTap: _openLargeCover,
                       child: PersistentCoverImage(
                         imageUrl: ep.coverUrl!,
                         height: 200,
@@ -440,36 +501,43 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
           ),
           if (_showLargeCover)
             Positioned.fill(
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _showLargeCover = false;
-                  });
-                },
-                child: Container(
-                  color: Colors.black.withOpacity(0.95),
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: PersistentCoverImage(
-                          imageUrl: ep.coverUrl!,
-                          fit: BoxFit.contain,
-                          errorIconColor: Colors.white,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                opacity: _coverOverlayOpacity,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _closeLargeCover,
+                  onVerticalDragUpdate: (details) => _handleCoverDragUpdate(details.primaryDelta ?? 0),
+                  onVerticalDragEnd: (details) => _handleCoverDragEnd(details.primaryVelocity ?? 0),
+                  onHorizontalDragUpdate: (details) => _handleCoverDragUpdate(details.primaryDelta ?? 0),
+                  onHorizontalDragEnd: (details) => _handleCoverDragEnd(details.primaryVelocity ?? 0),
+                  child: Container(
+                    color: Colors.black.withOpacity(0.95),
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: AnimatedScale(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOutBack,
+                            scale: _coverOverlayScale,
+                            child: PersistentCoverImage(
+                              imageUrl: ep.coverUrl!,
+                              fit: BoxFit.contain,
+                              errorIconColor: Colors.white,
+                            ),
+                          ),
                         ),
-                      ),
-                      Positioned(
-                        top: 40,
-                        right: 24,
-                        child: IconButton(
-                          icon: Icon(Icons.close, color: Colors.white, size: 36),
-                          onPressed: () {
-                            setState(() {
-                              _showLargeCover = false;
-                            });
-                          },
+                        Positioned(
+                          top: 40,
+                          right: 24,
+                          child: IconButton(
+                            icon: Icon(Icons.close, color: Colors.white, size: 36),
+                            onPressed: _closeLargeCover,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
