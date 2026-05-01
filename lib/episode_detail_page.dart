@@ -570,6 +570,8 @@ class _EpisodeDetailPageState extends State<EpisodeDetailPage> {
             ),
         ],
       ),
-    );
-  }
-} 
+    ),
+  );
+}
+}
+ 
