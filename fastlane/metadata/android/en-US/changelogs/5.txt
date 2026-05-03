@@ -1,0 +1,1 @@
+• Cover overlay closes via back/swipe and now supports pinch-to-zoom with smooth animations.

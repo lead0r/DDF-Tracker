@@ -1,0 +1,10 @@
+DDF Tracker ist eine Open-Source-Begleit-App für Fans der drei ???. Durchstöbere alle Folgen der Hauptserie, Die drei ??? Kids und DiE DR3i, markiere gehörte Episoden, vergebe Bewertungen und notiere persönliche Eindrücke. Ein persistenter Cover-Cache lädt die Artworks einmal herunter, speichert sie offline und repariert beschädigte Dateien bei Bedarf.
+
+Funktionen
+• Vollständiger Katalog mit Metadaten von dreimetadaten.de
+• Hörstatus, Bewertungen und Notizen pro Episode
+• Zufallsfolgen-Generator mit Filtern
+• Statistiken, Backup/Import per JSON und selbstheilender Cover-Cache
+• Streaming-Links zu deinem bevorzugten Anbieter
+
+Hinweis: „Die drei ???“ und verwandte Marken gehören ihren jeweiligen Inhabern. Dieses Projekt ist inoffiziell und steht in keiner Verbindung zu KOSMOS oder EUROPA.

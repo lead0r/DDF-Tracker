@@ -1,0 +1,10 @@
+DDF Tracker is an open-source companion app for Die drei ??? fans. Browse all episodes from the main series, Die drei ??? Kids and DiE DR3i, keep track of what you’ve listened to, save ratings and jot down personal notes. A persistent cover cache downloads artwork once and keeps it available offline, complete with repair tools and a manual warm-up flow.
+
+Features
+• Complete catalogue with metadata powered by dreimetadaten.de
+• Mark episodes as listened, rate them and add free-form notes
+• Random episode picker with filters for series, listened state and more
+• Statistics, backup/import via JSON and a persistent cover cache with self-healing
+• Streaming links that deep-link into the provider of your choice
+
+Disclaimer: “Die drei ???” and related trademarks belong to their respective owners. This is an unofficial fan-made project with no affiliation to KOSMOS or EUROPA.

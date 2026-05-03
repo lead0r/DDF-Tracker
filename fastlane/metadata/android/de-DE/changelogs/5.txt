@@ -1,0 +1,1 @@
+• Cover-Vollbild lässt sich jetzt per Zurück-Button/Swipe schließen und unterstützt Pinch-to-Zoom mit Animation.

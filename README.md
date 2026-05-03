@@ -27,6 +27,8 @@ Metadata about the episodes is provided by the great project https://dreimetadat
 
 Runs on Android – not yet available on iOS.
 
+Licensed under the MIT License (see LICENSE).
+
 ## ⬇️ Download
 
 **Latest alpha release:** `v0.3.1-alpha`

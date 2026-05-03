@@ -43,6 +43,22 @@ android {
         versionName = flutter.versionName
     }
 
+
+    flavorDimensions += "deploy"
+
+    productFlavors {
+        create("standard") {
+            dimension = "deploy"
+            if (keystoreProperties.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+        create("fdroid") {
+            dimension = "deploy"
+            signingConfig = null
+        }
+    }
+
     signingConfigs {
         create("release") {
             if (keystoreProperties.isNotEmpty()) {
@@ -56,9 +72,6 @@ android {
 
     buildTypes {
         release {
-            if (keystoreProperties.isNotEmpty()) {
-                signingConfig = signingConfigs.getByName("release")
-            }
             isMinifyEnabled = false
             isShrinkResources = false
             proguardFiles(

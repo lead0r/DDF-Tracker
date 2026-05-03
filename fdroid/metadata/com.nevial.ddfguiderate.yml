@@ -1,0 +1,35 @@
+Categories:
+  - Audio
+  - Reading
+License: MIT
+AuthorName: Lev
+SourceCode: https://github.com/lead0r/DDF-Tracker
+IssueTracker: https://github.com/lead0r/DDF-Tracker/issues
+Changelog: https://github.com/lead0r/DDF-Tracker/releases
+
+AutoName: DDF Tracker
+Summary: Track ???-, Kids- und DR3i-Folgen mit Ratings und Notizen
+Description: |
+  DDF Tracker ist eine freie Flutter-App für Fans der drei ???. Du kannst alle Episoden
+  durchsuchen, den Hörstatus pflegen, Bewertungen vergeben, persönliche Notizen speichern
+  und über Streaming-Links direkt in deinen bevorzugten Anbieter springen. Ein persistenter
+  Cover-Cache lädt Artworks einmal herunter, repariert sie bei Bedarf automatisch und hält
+  sie offline verfügbar.
+
+RepoType: git
+Repo: https://github.com/lead0r/DDF-Tracker.git
+
+Builds:
+  - versionName: 0.3.3-alpha
+    versionCode: 5
+    commit: v0.3.3-alpha
+    output: build/app/outputs/flutter-apk/app-fdroid-release.apk
+    subdir: .
+    srclibs:
+      - flutter@stable
+    prebuild:
+      - rm -rf ios
+    build:
+      - export PATH=$$flutter$$/bin:$PATH
+      - flutter pub get
+      - flutter build apk --flavor fdroid --release
